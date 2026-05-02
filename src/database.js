@@ -1,111 +1,98 @@
-import Database from 'better-sqlite3';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, '..', 'data.db'));
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS admins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    discord_user_id TEXT NOT NULL UNIQUE,
-    roblox_username TEXT NOT NULL,
-    added_by TEXT NOT NULL,
-    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
-  CREATE TABLE IF NOT EXISTS owners (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    discord_user_id TEXT NOT NULL UNIQUE,
-    roblox_username TEXT NOT NULL,
-    added_by TEXT NOT NULL,
-    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+const DEFAULT = {
+  warnings: [],
+  bans: [],
+  kicks: [],
+  admins: [],
+  owners: [],
+  logs: [],
+};
 
-  CREATE TABLE IF NOT EXISTS warnings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    roblox_username TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    warned_by TEXT NOT NULL,
-    warned_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+function load() {
+  if (!existsSync(DB_FILE)) return { ...DEFAULT };
+  try {
+    return JSON.parse(readFileSync(DB_FILE, 'utf8'));
+  } catch {
+    return { ...DEFAULT };
+  }
+}
 
-  CREATE TABLE IF NOT EXISTS bans (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    roblox_username TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    banned_by TEXT NOT NULL,
-    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS kicks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    roblox_username TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    kicked_by TEXT NOT NULL,
-    kicked_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS action_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    action TEXT NOT NULL,
-    roblox_username TEXT,
-    discord_user TEXT NOT NULL,
-    details TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+function save(db) {
+  writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+}
 
 export function addWarning(robloxUsername, reason, warnedBy) {
-  db.prepare('INSERT INTO warnings (roblox_username, reason, warned_by) VALUES (?, ?, ?)').run(robloxUsername, reason, warnedBy);
+  const db = load();
+  db.warnings.push({ roblox_username: robloxUsername, reason, warned_by: warnedBy, warned_at: new Date().toISOString() });
+  save(db);
 }
 
 export function addBan(robloxUsername, reason, bannedBy) {
-  db.prepare('INSERT INTO bans (roblox_username, reason, banned_by) VALUES (?, ?, ?)').run(robloxUsername, reason, bannedBy);
+  const db = load();
+  db.bans.push({ roblox_username: robloxUsername, reason, banned_by: bannedBy, banned_at: new Date().toISOString() });
+  save(db);
 }
 
 export function addKick(robloxUsername, reason, kickedBy) {
-  db.prepare('INSERT INTO kicks (roblox_username, reason, kicked_by) VALUES (?, ?, ?)').run(robloxUsername, reason, kickedBy);
+  const db = load();
+  db.kicks.push({ roblox_username: robloxUsername, reason, kicked_by: kickedBy, kicked_at: new Date().toISOString() });
+  save(db);
 }
 
 export function getWarnings(robloxUsername) {
-  return db.prepare('SELECT * FROM warnings WHERE roblox_username = ? ORDER BY warned_at DESC').all(robloxUsername);
+  return load().warnings.filter(w => w.roblox_username.toLowerCase() === robloxUsername.toLowerCase()).reverse();
 }
 
 export function getAllWarnings() {
-  return db.prepare('SELECT * FROM warnings ORDER BY warned_at DESC LIMIT 50').all();
+  return load().warnings.slice(-50).reverse();
 }
 
 export function getAllBans() {
-  return db.prepare('SELECT * FROM bans ORDER BY banned_at DESC LIMIT 50').all();
+  return load().bans.slice(-50).reverse();
 }
 
 export function getAllKicks() {
-  return db.prepare('SELECT * FROM kicks ORDER BY kicked_at DESC LIMIT 50').all();
+  return load().kicks.slice(-50).reverse();
 }
 
 export function addAdmin(discordUserId, robloxUsername, addedBy) {
-  db.prepare('INSERT OR REPLACE INTO admins (discord_user_id, roblox_username, added_by) VALUES (?, ?, ?)').run(discordUserId, robloxUsername, addedBy);
+  const db = load();
+  db.admins = db.admins.filter(a => a.discord_user_id !== discordUserId);
+  db.admins.push({ discord_user_id: discordUserId, roblox_username: robloxUsername, added_by: addedBy, added_at: new Date().toISOString() });
+  save(db);
 }
 
 export function addOwner(discordUserId, robloxUsername, addedBy) {
-  db.prepare('INSERT OR REPLACE INTO owners (discord_user_id, roblox_username, added_by) VALUES (?, ?, ?)').run(discordUserId, robloxUsername, addedBy);
+  const db = load();
+  db.owners = db.owners.filter(o => o.discord_user_id !== discordUserId);
+  db.owners.push({ discord_user_id: discordUserId, roblox_username: robloxUsername, added_by: addedBy, added_at: new Date().toISOString() });
+  save(db);
 }
 
 export function isAdmin(discordUserId) {
-  return db.prepare('SELECT 1 FROM admins WHERE discord_user_id = ?').get(discordUserId) !== undefined;
+  return load().admins.some(a => a.discord_user_id === discordUserId);
 }
 
 export function isOwner(discordUserId) {
-  return db.prepare('SELECT 1 FROM owners WHERE discord_user_id = ?').get(discordUserId) !== undefined;
+  return load().owners.some(o => o.discord_user_id === discordUserId);
 }
 
 export function addLog(action, robloxUsername, discordUser, details) {
-  db.prepare('INSERT INTO action_logs (action, roblox_username, discord_user, details) VALUES (?, ?, ?, ?)').run(action, robloxUsername, discordUser, details);
+  const db = load();
+  db.logs.push({ action, roblox_username: robloxUsername, discord_user: discordUser, details, created_at: new Date().toISOString() });
+  if (db.logs.length > 500) db.logs = db.logs.slice(-500);
+  save(db);
 }
 
 export function getLogs() {
-  return db.prepare('SELECT * FROM action_logs ORDER BY created_at DESC LIMIT 100').all();
+  return load().logs.slice(-100).reverse();
 }
-
-export default db;

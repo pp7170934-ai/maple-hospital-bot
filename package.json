@@ -4,12 +4,14 @@
   "description": "Maple Hospital Discord Bot",
   "type": "module",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/index.js",
     "deploy": "node src/deploy-commands.js"
   },
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "node-fetch": "^3.3.2"

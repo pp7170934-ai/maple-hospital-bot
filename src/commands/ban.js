@@ -5,7 +5,7 @@ import { addBan, addLog } from '../database.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ban')
-  .setDescription('Ban a Roblox user from the game')
+  .setDescription('Ban a Roblox user from the custom server')
   .addStringOption(opt => opt.setName('robloxuser').setDescription('Roblox username').setRequired(true))
   .addStringOption(opt => opt.setName('reason').setDescription('Reason for ban').setRequired(true));
 
@@ -24,7 +24,7 @@ export async function execute(interaction) {
       return interaction.editReply(`Could not find Roblox user **${username}**.`);
     }
 
-    await banUser(userId, reason);
+    await banUser(userId);
     addBan(username, reason, interaction.user.tag);
     addLog('BAN', username, interaction.user.tag, reason);
 

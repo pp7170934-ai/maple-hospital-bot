@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createServer } from 'http';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import * as ban from './commands/ban.js';
 import * as kick from './commands/kick.js';
@@ -8,6 +9,15 @@ import * as admin from './commands/admin.js';
 import * as owner from './commands/owner.js';
 import * as moderation from './commands/moderation.js';
 import * as logs from './commands/logs.js';
+
+// Keep-alive HTTP server for Render Web Service free tier
+const PORT = process.env.PORT || 3000;
+createServer((req, res) => {
+  res.writeHead(200);
+  res.end('Maple Hospital Bot is running.');
+}).listen(PORT, () => {
+  console.log(`Health check server listening on port ${PORT}`);
+});
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 

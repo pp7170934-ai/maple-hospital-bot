@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { checkAdmin } from '../permissions.js';
-import { getRobloxUserId, assignGameRole } from '../roblox.js';
+import { getRobloxUserId, announceMessage } from '../roblox.js';
 import { addLog } from '../database.js';
 
 const VALID_ROLES = [
@@ -18,7 +18,7 @@ const VALID_ROLES = [
 
 export const data = new SlashCommandBuilder()
   .setName('assign')
-  .setDescription('Assign a custom server role to a Roblox user')
+  .setDescription('Assign a role to a Roblox user in the custom server')
   .addStringOption(opt =>
     opt.setName('robloxuser').setDescription('Roblox username').setRequired(true)
   )
@@ -27,9 +27,7 @@ export const data = new SlashCommandBuilder()
       .setName('role')
       .setDescription('Role to assign')
       .setRequired(true)
-      .addChoices(
-        ...VALID_ROLES.map(r => ({ name: r, value: r }))
-      )
+      .addChoices(...VALID_ROLES.map(r => ({ name: r, value: r })))
   );
 
 export async function execute(interaction) {
@@ -47,8 +45,12 @@ export async function execute(interaction) {
       return interaction.editReply(`Could not find Roblox user **${username}**.`);
     }
 
-    await assignGameRole(userId, roleName);
     addLog('ASSIGN', username, interaction.user.tag, `Assigned role: ${roleName}`);
+
+    try {
+      await announceMessage(`[STAFF] ${username} has been assigned the role: ${roleName}`);
+    } catch {
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0x2ecc71)
@@ -58,7 +60,6 @@ export async function execute(interaction) {
         { name: 'Role', value: roleName, inline: true },
         { name: 'Assigned By', value: interaction.user.tag, inline: true }
       )
-      .setDescription('The role will apply next time the player joins or respawns in a custom server.')
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });

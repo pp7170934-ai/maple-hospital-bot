@@ -5,7 +5,7 @@ import { addKick, addLog } from '../database.js';
 
 export const data = new SlashCommandBuilder()
   .setName('kick')
-  .setDescription('Kick a Roblox user from the game')
+  .setDescription('Kick a Roblox user from the custom server')
   .addStringOption(opt => opt.setName('robloxuser').setDescription('Roblox username').setRequired(true))
   .addStringOption(opt => opt.setName('reason').setDescription('Reason for kick').setRequired(true));
 

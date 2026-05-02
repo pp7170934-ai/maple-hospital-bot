@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { checkAdmin } from '../permissions.js';
-import { getRobloxUserId, warnUserInGame } from '../roblox.js';
+import { getRobloxUserId, announceMessage } from '../roblox.js';
 import { addWarning, getWarnings, addLog } from '../database.js';
 
 export const data = new SlashCommandBuilder()
@@ -27,12 +27,12 @@ export async function execute(interaction) {
     addWarning(username, reason, interaction.user.tag);
     addLog('WARN', username, interaction.user.tag, reason);
 
+    const allWarnings = getWarnings(username);
+
     try {
-      await warnUserInGame(userId, reason);
+      await announceMessage(`[WARNING] ${username} has been warned: ${reason}`);
     } catch {
     }
-
-    const allWarnings = getWarnings(username);
 
     const embed = new EmbedBuilder()
       .setColor(0xf1c40f)

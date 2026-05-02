@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer } from 'http';
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
 import * as ban from './commands/ban.js';
 import * as kick from './commands/kick.js';
 import * as warn from './commands/warn.js';
@@ -28,8 +28,19 @@ for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Maple Hospital Bot is online as ${client.user.tag}`);
+  try {
+    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
+    const commandData = commands.map(c => c.data.toJSON());
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID),
+      { body: commandData }
+    );
+    console.log('Slash commands registered successfully.');
+  } catch (err) {
+    console.error('Failed to register slash commands:', err);
+  }
 });
 
 client.on('interactionCreate', async interaction => {
